@@ -27,6 +27,7 @@
 #define DSTRING_NULL_TERMINATOR '\0'
 
 typedef char * dstring;
+typedef struct _dstring_builder _dstring_builder;
 typedef _dstring_builder* dstring_builder;
 
 typedef struct dstring_memory_allocator
@@ -113,7 +114,7 @@ u64              dstring_builder___get__capacity(dstring_builder builder);
 u64              dstring_builder___get__chars_count(dstring_builder builder);
 
        
-#if defined(DSTRING_IMPLEMENTATION)
+#ifdef DSTRING_IMPLEMENTATION
 
 #include <stdlib.h>
 #include <string.h>
@@ -310,7 +311,7 @@ dstring dstring___create__substring__by_delim(const dstring dstr, const char del
     else
     {
         u64 index = dstr_len - 1;
-        while (*ptr++ != delim && index-- >= 0);
+        while (*ptr++ != delim && index-- != 0);
 
         return dstring___create__from_chars(dstr, index, allocator);
     }
@@ -325,7 +326,7 @@ dstring dstring___create__substring__by_delims(const dstring dstr, const char de
     if (delims_count <= dstr_len)
     {
 
-        for (u64 i = start; i >= 0 && i <= dstr_len - delims_count; i += didx)
+        for (u64 i = start; i != 0 && i <= dstr_len - delims_count; i += didx)
         {
             bool match = true;
             for (u64 j = 0; j < delims_count; j++)
@@ -651,7 +652,7 @@ dstring dstring_builder___chop__prefix__by_delim(dstring_builder builder, const 
 dstring dstring_builder___chop__suffix__by_delim(dstring_builder builder, const char delim, dstring_memory_allocator* allocator)
 {
     u64 delim_index = builder->count - 1;
-    for (; delim_index >= 0 && builder->chars[delim_index] != delim; delim_index--);
+    for (; delim_index != 0 && builder->chars[delim_index] != delim; delim_index--);
 
     dstring dstr = dstring___create__from_chars(builder->chars + delim_index + 1, builder->count - delim_index, allocator);
 
@@ -781,8 +782,8 @@ inline void dstring_builder___remove_at__chars(dstring_builder builder, u64 inde
 void dstring_builder___remove_all__char(dstring_builder builder, const char c)
 {
     char * ptr = builder->chars;
-    int iteration = 0;
-    int deleted_count = 0;
+    u64 iteration = 0;
+    u64 deleted_count = 0;
     
     while(iteration < builder->count)
     {
