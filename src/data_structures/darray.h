@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include "ddefines.h"
+#include "../utils/ddefines.h"
 
 typedef struct darray_memory_allocator
 {
@@ -37,17 +37,17 @@ typedef enum darray_sort_type_enum
     DARRAY_SORT_TYPE_QUICK_SORT,
 } darray_sort_type_enum;
 
-void * darray___create__empty(u64 initial_capacity, u64 type_size_in_bytes, darray_memory_allocator* allocator);
-void * darray___create__from_carray(const void * carray, u64 length, u64 type_size_in_bytes, darray_memory_allocator* allocator);
-void * darray___create__from_darray(const void * darray, darray_memory_allocator* allocator);
-void   darray___insert__at(void ** darray, const void * element, u64 index);
-void   darray___remove__at(void ** darray, u64 index);
-void   darray___remove(void ** darray, const void * element);
-void   darray___push(void** darray, const void * element);
-void   darray___pop(void** darray, void* out_element);
-void   darray___sort(void* darray, bool (*compare)(void*, void*), darray_sort_type_enum sort_type);
-u64    darray___get__length(const void * darray);
-u64    darray___get__capacity(const void * darray);
+void * darr_create_empty(u64 initial_capacity, u64 type_size_in_bytes, darray_memory_allocator* allocator);
+void * darr_create_from_carr(const void * carray, u64 length, u64 type_size_in_bytes, darray_memory_allocator* allocator);
+void * darr_create_from_darr(const void * darray, darray_memory_allocator* allocator);
+void   darr_insert_at(void ** darray, const void * element, u64 index);
+void   darr_remove_at(void ** darray, u64 index);
+void   darr_remove(void ** darray, const void * element);
+void   darr_push(void** darray, const void * element);
+void   darr_pop(void** darray, void* out_element);
+void   darr_sort(void* darray, bool (*compare)(void*, void*), darray_sort_type_enum sort_type);
+u64    darrlen(const void * darray);
+u64    darr_capacity(const void * darray);
 
 
 #if defined(DARRAY_IMPLEMENTATION)
@@ -68,10 +68,7 @@ typedef struct _darray_header
     u64 type_size_in_bytes;
 } _darray_header;
 
-static void _darray___merge_sort(void *darray, u64 start, u64 end, bool (*compare)(void *, void *));
-
-
-void * darray___create__empty(u64 initial_capacity, u64 type_size_in_bytes, darray_memory_allocator* allocator)
+void * darr_create_empty(u64 initial_capacity, u64 type_size_in_bytes, darray_memory_allocator* allocator)
 {
     darray_memory_allocator _allocator = (allocator == NULL) ? DARRAY_DEFAULT_ALLOCATOR : *allocator;
     
@@ -85,7 +82,7 @@ void * darray___create__empty(u64 initial_capacity, u64 type_size_in_bytes, darr
     return _block_from_head(header);
 }
 
-void * darray___create__from_carray(const void *carray, u64 length, u64 type_size_in_bytes, darray_memory_allocator *allocator)
+void * darr_create_from_carr(const void *carray, u64 length, u64 type_size_in_bytes, darray_memory_allocator *allocator)
 {
     darray_memory_allocator _allocator = (allocator == NULL) ? DARRAY_DEFAULT_ALLOCATOR : *allocator;
     
@@ -102,7 +99,7 @@ void * darray___create__from_carray(const void *carray, u64 length, u64 type_siz
     return block;
 }
 
-void * darray___create__from_darray(const void *darray, darray_memory_allocator *allocator)
+void * darr_create_from_darr(const void *darray, darray_memory_allocator *allocator)
 {
     darray_memory_allocator _allocator = (allocator == NULL) ? DARRAY_DEFAULT_ALLOCATOR : *allocator;
 
@@ -114,7 +111,7 @@ void * darray___create__from_darray(const void *darray, darray_memory_allocator 
     return _block_from_head(header);
 }
 
-void darray___insert__at(void ** darray, const void *element, u64 index)
+void darr_insert_at(void ** darray, const void *element, u64 index)
 {
     if (darray == NULL) return; // Silence error
     
@@ -143,7 +140,7 @@ void darray___insert__at(void ** darray, const void *element, u64 index)
     head->count++;
 }
 
-void darray___remove__at(void ** darray, u64 index)
+void darr_remove_at(void ** darray, u64 index)
 {
     _darray_header* head = _head_from_block((*darray));
 
@@ -156,7 +153,7 @@ void darray___remove__at(void ** darray, u64 index)
     // Dont forget to reasign darray to new reallocation
 }
 
-void darray___remove(void ** darray, const void *element)
+void darr_remove(void ** darray, const void *element)
 {
     if (element == NULL) return; // Silence error
     
@@ -185,7 +182,7 @@ void darray___remove(void ** darray, const void *element)
     }
 }
 
-void darray___push(void **darray, const void *element)
+void darr_push(void **darray, const void *element)
 {
     if (darray == NULL) return; // Silence error
     
@@ -209,7 +206,7 @@ void darray___push(void **darray, const void *element)
     head->count++;
 }
 
-void darray___pop(void **darray, void *out_element)
+void darr_pop(void **darray, void *out_element)
 {
     if (out_element == NULL) return; // Silence error
 
@@ -223,39 +220,41 @@ void darray___pop(void **darray, void *out_element)
     // Dont forget to reasign darray to new reallocation
 }
 
-inline void darray___sort(void *darray, bool (*compare)(void *, void *), darray_sort_type_enum sort_type)
+inline void darr_sort(void *darray, bool (*compare)(void *, void *), darray_sort_type_enum sort_type)
 {
-    switch (sort_type)
-    {
-        case DARRAY_SORT_TYPE_MERGE_SORT:
-        {
-            _darray_header * head = _head_from_block(darray);
-            _darray___merge_sort(darray, 0, head->count ,compare);
-        } break;
-        case DARRAY_SORT_TYPE_QUICK_SORT:
-        {
-            _darray_header * head = _head_from_block(darray);
-            qsort(darray, head->count, head->type_size_in_bytes , compare);
-        } break;
-        default: { } break;
-    }
+    (void)darray; (void)compare; (void)sort_type;
+    // switch (sort_type)
+    // {
+    //     case DARRAY_SORT_TYPE_MERGE_SORT:
+    //     {
+    //         _darray_header * head = _head_from_block(darray);
+    //         _darray___merge_sort(darray, 0, head->count ,compare);
+    //     } break;
+    //     case DARRAY_SORT_TYPE_QUICK_SORT:
+    //     {
+    //         _darray_header * head = _head_from_block(darray);
+    //         qsort(darray, head->count, head->type_size_in_bytes , compare);
+    //     } break;
+    //     default: { } break;
+    // }
 }
 
-inline u64 darray___get__length(const void *darray)
+inline u64 darrlen(const void *darray)
 {
     if (darray == NULL) return 0; // Silence error
     return _head_from_block(darray)->count;
 }
 
-inline u64 darray___get__capacity(const void *darray)
+inline u64 darr_capacity(const void *darray)
 {
     if (darray == NULL) return 0; // Silence error
     return _head_from_block(darray)->capacity;
 }
 
-static void _darray___merge_sort(void *darray, u64 start, u64 end, bool (*compare)(void *, void *))
-{
-    assert(0 && "NOT IMPLEMENTED");
-}
+// static void _darr_merge_sort(void *darray, u64 start, u64 end, bool (*compare)(void *, void *))
+// {
+//     (void)darray; (void)start; (void)end; (void)compare;
+//     assert(0 && "NOT IMPLEMENTED");
+// }
 
 #endif

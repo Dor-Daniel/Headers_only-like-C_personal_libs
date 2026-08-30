@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include "ddefines.h"
+#include "../utils/ddefines.h"
 
 typedef struct dlinked_list_memory_allocator
 {
@@ -36,24 +36,26 @@ typedef struct _dlinked_list_iterator* dlinked_list_iterator;
 typedef struct _dlinked_list _dlinked_list; 
 typedef struct _dlinked_list * dlinked_list;
 
-// dlinked_list dlinked_list___create(u64 item_size_in_bytes, dlinked_list_memory_allocator* allocator);
-// void         dlinked_list___push_back(dlinked_list list, void* item);
-// void         dlinked_list___push_front(dlinked_list list, void* item);
-// void         dlinked_list___pop_front(dlinked_list list, void** out_item);
-// void         dlinked_list___pop_back(dlinked_list list, void** out_item);
-// void         dlinked_list___remove(dlinked_list list, void * item_to_remove);
-// void         dlinked_list___remove_at(dlinked_list list, u64 index, bool from_start, void ** out_item);
-// void         dlinked_list___add_at(dlinked_list list, u64 index, bool from_start, void* item);
-// void         dlinked_list___destroy(dlinked_list list);
+dlinked_list dlinked_list_create(u64 item_size_in_bytes, dlinked_list_memory_allocator* allocator);
+void         dlinked_list_push_back(dlinked_list list, void* item);
+void         dlinked_list_push_front(dlinked_list list, void* item);
+void         dlinked_list_pop_front(dlinked_list list, void** out_item);
+void         dlinked_list_pop_back(dlinked_list list, void** out_item);
+void         dlinked_list_remove_all(dlinked_list list, void * item_to_remove);
+// void         dlinked_list_remove_at(dlinked_list list, u64 index, bool from_start, void ** out_item);
+// void         dlinked_list_insert_at(dlinked_list list, u64 index, bool from_start, void* item);
+// void         dlinked_list_destroy(dlinked_list list);
+// u64          dlinked_list_len(dlinked_list list);
 
-// dlinked_list_iterator dlinked_list___iterator__create(dlinked_list list);
-// void *                dlinked_list___iterator__get_value(dlinked_list_iterator iterator);
-// void                  dlinked_list___iterator__destroy(dlinked_list list);
-// void                  dlinked_list___iterator__next(dlinked_list_iterator* iterator);
+// dlinked_list_iterator dlinked_list_iterator_create(dlinked_list list);
+// void *                dlinked_list_iterator_get_value(dlinked_list_iterator iterator);
+// void                  dlinked_list_iterator_next(dlinked_list_iterator* iterator);
+// void                  dlinked_list_iterator_destroy(dlinked_list list);
 
 #if defined(DLINKED_LIST_IMPLEMENTATION)
-#include <stdlib.h>
 #include <string.h>
+#include <stdlib.h>
+#include <assert.h>
 #define DLINKED_LIST_DEFAULT_ALLOCATOR (dlinked_list_memory_allocator){ .allocate = malloc, .reallocate = realloc, .free = free }
 
 
@@ -66,7 +68,7 @@ typedef struct _dlinked_list_entry
 
 typedef struct _dlinked_list_iterator
 {
-    _dlinked_list_entry current;
+    _dlinked_list_entry* current;
 } _dlinked_list_iterator;
 
 typedef struct _dlinked_list
@@ -78,5 +80,130 @@ typedef struct _dlinked_list
     _dlinked_list_entry * tail;
 } _dlinked_list; 
 
+
+dlinked_list dlinked_list_create(u64 item_size_in_bytes, dlinked_list_memory_allocator* allocator)
+{
+    dlinked_list_memory_allocator _allocator = allocator == NULL ? DLINKED_LIST_DEFAULT_ALLOCATOR : *allocator;
+
+    dlinked_list list = _allocator.allocate(sizeof(_dlinked_list));
+    
+    list->allocator          = _allocator;
+    list->count              = 0;
+    list->item_size_in_bytes = item_size_in_bytes;
+    list->head               = NULL;
+    list->tail               = NULL;
+
+    return list;
+}
+
+void dlinked_list_push_back(dlinked_list list, void* item)
+{
+    assert(list != NULL);
+
+    _dlinked_list_entry * entry = list->allocator.allocate(sizeof(_dlinked_list_entry));
+
+    entry->value = list->allocator.allocate(list->item_size_in_bytes);
+    memcpy(entry->value, item, list->item_size_in_bytes);
+    
+    entry->prev = list->tail;
+    entry->next = NULL;
+    list->tail  = entry;
+
+    if (list->count == 0)
+    {
+        list->head = entry;
+    }
+
+    list->count++;
+}
+
+void dlinked_list_push_front(dlinked_list list, void *item)
+{
+    assert(list != NULL);
+    
+    _dlinked_list_entry * entry = list->allocator.allocate(sizeof(_dlinked_list_entry));
+    
+    entry->value = list->allocator.allocate(list->item_size_in_bytes);
+    memcpy(entry->value, item, list->item_size_in_bytes);
+    
+    entry->prev = NULL;
+    entry->next = list->head;
+    list->tail  = entry;
+    
+    if (list->count == 0)
+    {
+        list->tail = entry;
+    }
+    
+    list->count++;
+}
+
+void dlinked_list_pop_front(dlinked_list list, void **out_item)
+{
+    assert(list != NULL && out_item != NULL);
+
+    if (list->count == 0) return; // Silence return when list is empty
+
+    _dlinked_list_entry* front = list->head;
+
+    memcpy(out_item, front->value, list->item_size_in_bytes);
+
+    list->head = front->next;
+    list->count--;
+
+    list->allocator.free(front);
+}
+
+void dlinked_list_pop_back(dlinked_list list, void **out_item)
+{
+    assert(list != NULL && out_item != NULL);
+    
+    if (list->count == 0) return; // Silence return when list is empty
+    
+    _dlinked_list_entry* back = list->tail;
+    
+    memcpy(out_item, back->value, list->item_size_in_bytes);
+    
+    list->head = back->prev;
+    list->count--;
+    
+    list->allocator.free(back);
+}
+
+void dlinked_list_remove_all(dlinked_list list, void *item_to_remove)
+{
+    assert(list != NULL);
+
+    if (list->count == 0) return;
+
+    _dlinked_list_entry* head = list->head;
+
+    while (head != list->tail)
+    {
+        char* citem = (char*)item_to_remove;
+        bool found = true;
+        for (char* p = ((char*)head->value); p < ((char*)head->value) + list->item_size_in_bytes; p++, citem++)
+        {
+            if (*p != *citem)
+            {
+                found = false;
+                break;
+            }
+        }
+
+        if (found)
+        {
+            _dlinked_list_entry* temp = head;
+            head = temp->next;
+            list->allocator.free(temp);
+            list->count--;
+        }
+        else
+        {
+            head = head->next;
+        }
+        
+    }
+}
 
 #endif
