@@ -2,6 +2,7 @@
 
 ## IMPORTANT 
   For now this header only support windows. (maybe later we add support for linux)
+  We have a few bugs. Nothing that deleting the build directory cant solve but still...
 
 ## Usage
   - Download the header file and place it in your working directory.
